@@ -88,10 +88,8 @@ model {
     usersService -> usersDB 'Чтение и запись данных пользователей'
 
     postsService -> postsDB 'Чтение и запись постов и комментариев'
-    postsService -> usersService 'Валидация токенов'
 
     statsService -> statsDB 'Сохраняет и читает статистику'
-    statsService -> usersService 'Валидация токенов'
     statsService -> postsService 'Валидация постов'
   }
 }
