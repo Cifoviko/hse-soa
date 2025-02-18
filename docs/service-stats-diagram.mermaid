@@ -1,0 +1,37 @@
+erDiagram
+    User ||--|{ Like : "Creates or Removes"
+    User ||--|{ Post : "Reads"
+    User ||--|{ Comment : "Reads"
+
+    Like }|--|| LikeInfoTable : "Stores"
+    Like }|--|| UsersLikeTable : "Stores posts liked by user"
+
+    Post }|--|| ContentReadTable : "Stores read info"
+    
+    Comment }|--|| ContentReadTable : "Stores read info"
+
+    User {
+        UUID UserId
+    }
+    Like {
+        UUID UserId
+        Bool IsAdded
+        Enum ContentType
+        UUID ContentId
+        Datetime Timestamp
+    }
+    Post {
+        UUID PostId
+        UUID UserId
+        String Title
+        String PostText
+        Datetime CreatedAt
+    }
+    Comment {
+        UUID CommentId
+        UUID ParentId
+        UUID UserId
+        String Title
+        String CommentText
+        Datetime CreatedAt
+    }

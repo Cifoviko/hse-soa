@@ -1,0 +1,28 @@
+erDiagram
+    User ||--|{ Post : "Creates"
+    User ||--|{ Comment : "Creates"
+
+    Post }|--|| PostTable : "Store"
+    Post }|--|| UserContentTable : "Store user posts"
+    
+    Comment }|--|| UserContentTable : "Store user comments"
+    Comment }|--|| CommentTable : "Store"
+
+    User {
+        UUID UserId
+    }
+    Post {
+        UUID PostId
+        UUID UserId
+        String Title
+        String PostText
+        Datetime CreatedAt
+    }
+    Comment {
+        UUID CommentId
+        Enum ParentContentType
+        UUID ParentId
+        UUID UserId
+        String PostText
+        Datetime CreatedAt
+    }

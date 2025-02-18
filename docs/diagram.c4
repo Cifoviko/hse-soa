@@ -1,0 +1,132 @@
+specification {
+  element actor
+  element system
+  element component
+  element database
+  element queue
+}
+
+model {
+  user = actor 'Пользователь' {
+    description 'Человек. Делает клац клац'
+  }
+
+  socialNetwork = system 'Социальная сеть' {
+    style {
+      opacity 25%
+    }
+
+    apiService = component 'Сервис API' {
+      description 'Принимает запросы с UI и перенаправляет их в сервисы'
+    }
+
+    usersService = component 'Сервис пользователей' {
+      description 'Регистрация, аутентификация, управление пользователями'
+    }
+
+    postsService = component 'Сервис постов и комментариев' {
+      description 'Создание, редактирование и удаление постов, комментарии'
+    }
+
+    statsService = component 'Сервис статистики' {
+      description 'Подсчет лайков, просмотров, комментариев'
+    }
+
+    ui = component 'UI' {
+      description 'UI'
+      style {
+      }
+    }
+
+    apiDB = database 'База данных API' {
+      description 'Хранит логи, кеши и данные для работы сервиса API'
+      style {
+        icon tech:postgresql
+      }
+    }
+
+    usersDB = database 'База данных пользователей' {
+      description 'Хранит информацию о пользователях'
+      style {
+        icon tech:postgresql
+      }
+    }
+
+    postsDB = database 'База данных постов' {
+      description 'Хранит посты и комментарии'
+      style {
+        icon tech:postgresql
+      }
+    }
+
+    statsDB = database 'База данных статистики' {
+      description 'Хранит данные о просмотрах, лайках, комментариях'
+      style {
+        icon https://cdn.brandfetch.io/idnezyZEJm/theme/dark/symbol.svg?c=1dxbfHSJFAPEGdCLU4o5B
+      }
+    }
+
+    messageBroker = queue 'Брокер сообщений' {
+      description 'Передает события между сервисами'
+      style {
+        icon tech:kafka
+      }
+    }
+
+    user -> ui 'Создает, читает, комментирует, лайкает посты и просматривает статистику'
+
+    ui -> apiService 'Передает запросы пользователя'
+
+    apiService -> usersService 'Запросы на регистрацию и аутентификацию'
+    apiService -> postsService 'Запросы на управление и просмотр постов и комментариев'
+    apiService -> messageBroker 'Отправляет события (просмотры, лайки, комментарии)'
+    apiService -> statsService 'Запросы на получение статистики'
+    apiService -> apiDB 'Кеширование, логирование и получение API ключей'
+    
+    messageBroker -> statsService 'Передает события статистики'
+
+    usersService -> usersDB 'Чтение и запись данных пользователей'
+
+    postsService -> postsDB 'Чтение и запись постов и комментариев'
+
+    statsService -> statsDB 'Сохраняет и читает статистику'
+    statsService -> postsService 'Валидация постов'
+  }
+}
+
+views {
+  view landscape {
+    title 'Социальная сеть'
+    include *
+  }
+
+  view of socialNetwork {
+    title 'Компоненты социальной сети'
+    include *
+
+    style user {
+      shape person
+      color slate
+    }
+    
+    style ui {
+      shape browser
+      color green
+    }
+    
+    style messageBroker {
+      shape queue
+      color amber
+    }
+    
+    style apiService, usersService, postsService, statsService {
+      color gray
+    }
+
+    style usersDB, postsDB, statsDB, apiDB {
+      color blue
+      shape storage
+    }
+  	autoLayout TopBottom
+	}
+}
