@@ -1,0 +1,30 @@
+erDiagram
+    User ||--|| UserData : "Creates & updates"
+    User ||--|{ LoginToken : "Login"
+    User ||--|| UserRole : "Change role"
+
+    UserData }|--|| UserTable : "Store"
+
+    UserRole }|--|| UserRoleTable : "Store user role"
+    UserRole }|--|| RoleTable : "Store"
+
+    User {
+        UUID UserId
+    }
+    UserData {
+        UUID UserId
+        String Login
+        String Name
+        String PasswordHash
+        Datetime CreatedAt
+    }
+    LoginToken {
+        UUID UserId
+        Datetime CreatedAt
+        Datetime ExpiresAt
+        String Token
+    }
+    UserRole {
+        UUID UserId
+        RoleType Type
+    }

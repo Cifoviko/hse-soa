@@ -1,0 +1,45 @@
+erDiagram
+    User ||--|{ Request : "Creates"
+    User ||--|{ Responce : "Reads"
+
+    Request ||--|| ApiKey : "Uses"
+    Request ||--|| Log : "Logs"
+
+    Responce ||--|| Log : "Logs"
+    Responce ||--|| Cache : "Caches"
+
+    Log }|--|| LogTable : "Stores"
+
+    Cache }|--|| CacheTable : "Stores"
+
+    ApiKey }|--|| ApiKeyTable : "Stores"
+    
+    User {
+        UUID UserId
+    }
+    Log {
+        UUID UserId
+        Datetime Timestamp
+        ActionType Type
+        Json Data
+    }
+    Request {
+        RequestType Type
+        Json Body
+    }
+    Responce {
+        ResponceType Type
+        Json Body
+    }
+    Cache {
+        Request Request
+        Responce Responce
+        DateTime CachedAt
+    }
+    ApiKey {
+        String ServiceName
+        String Key
+        Int Version
+        DateTime CreatedAt
+        DateTime ValidTill
+    }
