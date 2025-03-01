@@ -19,9 +19,14 @@ Primary key: **(id)**
 Поля:
 * **UUID** - **id**
 * **string** - **login**
-* **string** - **name**
 * **string** - **password_hash**
+* **string** - **first_name**
+* **string** - **second_name**
+* **date** - **birth_date**
+* **string** - **email**
+* **string** - **phone_number**
 * **datetime** - **created_at**
+* **datetime** - **updated_at**
 
 ### User Role Table
 ---

@@ -80,7 +80,7 @@ def validate_regular(s):
     return (s and (len(s) < 100))
   
 def validate_password(s):
-    pattern = re.compile(r"^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,100}$")
+    pattern = re.compile(r"^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[#@$!%*?&])[A-Za-z\d#@$!%*?&]{8,100}$")
     return (s and len(s) < 100 and bool(pattern.match(s)))
 
 def validate_date(s):
@@ -419,4 +419,4 @@ def update_info_method():
 # ------====== [MAIN] =====-----
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False)
