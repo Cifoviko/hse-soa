@@ -11,7 +11,7 @@ import os
 # ------====== [APP CONFIG] =====-----
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL", "sqlite:///:memory:")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['JWT_SECRET_KEY'] = 'your_jwt_secret_key'
 
@@ -65,7 +65,7 @@ class User(db.Model):
         return self
 
 with app.app_context():
-    db.drop_all()
+    # db.drop_all()
     db.create_all()
 
 # ------====== [VALIDATION FUNCTIONS] =====-----
@@ -81,19 +81,19 @@ def validate_regular(s):
   
 def validate_password(s):
     pattern = re.compile(r"^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,100}$")
-    return (s and bool(pattern.match(s)))
+    return (s and len(s) < 100 and bool(pattern.match(s)))
 
 def validate_date(s):
     pattern = re.compile(r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$")
-    return (s and bool(pattern.match(s)))
+    return (s and len(s) < 100 and bool(pattern.match(s)))
 
 def validate_phone(s):
     pattern = re.compile(r"^\+?[1-9]\d{1,14}$")
-    return (s and bool(pattern.match(s)))
+    return (s and len(s) < 20 and bool(pattern.match(s)))
 
 def validate_email(s):
     pattern = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,100}$")
-    return (s and bool(pattern.match(s)))
+    return (s and len(s) < 100 and bool(pattern.match(s)))
 
 # ------====== [UTILITY FUNCTIONS] =====-----
 
