@@ -1,0 +1,169 @@
+definitions: {}
+info:
+  description: powered by Flasgger
+  termsOfService: /tos
+  title: A swagger API
+  version: 0.0.1
+paths:
+  /login:
+    post:
+      parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            password:
+              description: The password
+              type: string
+            username:
+              description: The username
+              type: string
+          required:
+          - username
+          - password
+          type: object
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  jwt_token:
+                    description: JWT access token
+                    type: string
+                type: object
+          description: User logged in successfully
+        '400':
+          description: Missing username or password
+        '401':
+          description: Invalid username or password
+      summary: Login
+  /me:
+    post:
+      parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            jwt_token:
+              description: JWT access token from login method
+              type: string
+          required:
+          - jwt_token
+          type: object
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  birth_date:
+                    description: User's birth date
+                    format: date
+                    type: string
+                  created_at:
+                    description: User's birth date
+                    format: date-time
+                    type: string
+                  email:
+                    description: User's email
+                    type: string
+                  first_name:
+                    description: User's first name
+                    type: string
+                  id:
+                    description: User's id in system
+                    type: integer
+                  phone_number:
+                    description: User's phone number
+                    type: string
+                  second_name:
+                    description: User's second name
+                    type: string
+                  updated_at:
+                    description: User's birth date
+                    format: date-time
+                    type: string
+                type: object
+          description: Token's owner data
+        '400':
+          description: Missing token
+        '401':
+          description: Invalid token
+      summary: Get all user information
+  /register:
+    post:
+      parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            password:
+              description: The password of the new user
+              type: string
+            username:
+              description: The username of the new user
+              type: string
+          required:
+          - username
+          - password
+          type: object
+      responses:
+        '201':
+          description: User registered successfully
+        '400':
+          description: Missing username or password
+        '401':
+          description: Invalid username or password
+        '402':
+          description: User with same username already exists
+      summary: Register new user
+  /update_info:
+    post:
+      parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            jwt_token:
+              description: JWT access token from login method
+              type: string
+            user_data:
+              description: New user data
+              properties:
+                birth_date:
+                  description: User's birth date
+                  format: date
+                  type: string
+                email:
+                  description: User's email
+                  type: string
+                first_name:
+                  description: User's first name
+                  type: string
+                phone_number:
+                  description: User's phone number
+                  type: string
+                second_name:
+                  description: User's second name
+                  type: string
+              type: object
+          required:
+          - jwt_token
+          type: object
+      responses:
+        '201':
+          description: Successfuly updated user information
+        '400':
+          description: Missing token or user data
+        '401':
+          description: Invalid data
+        '402':
+          description: Invalid token
+      summary: Get all user information
+swagger: '2.0'
+
