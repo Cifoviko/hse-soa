@@ -73,7 +73,7 @@ class PostService(post_pb2_grpc.PostServiceServicer):
         if not post:
             return post_pb2.PostResponse(error="Post not found")
         
-        if post.creator_id != request.creator_id:
+        if (post.creator_id != request.creator_id) and post.is_private:
             return post_pb2.PostResponse(error="Permission denied")
             
         return post_pb2.PostResponse(post=self._post_to_proto(post))

@@ -78,6 +78,31 @@ def test_get_post_not_found(post_service):
     response = post_service.GetPost(request, None)
     assert response.error == "Post not found"
 
+def test_get_public_post(post_service):
+    create_resp = post_service.CreatePost(
+        post_pb2.CreatePostRequest(
+            post_data=post_pb2.PostData(
+                title="Public Post",
+                description="Public",
+                is_private=False,
+                tags=[]
+            ),
+            creator_id=2
+        ),
+        None
+    )
+    
+    request = post_pb2.GetPostRequest(
+        post_id=create_resp.post.id,
+        creator_id=1
+    )
+    response = post_service.GetPost(request, None)
+    
+    assert response.post.id == create_resp.post.id
+    assert response.post.data.title == "Public Post"
+    assert not response.post.data.is_private
+    assert not response.error
+
 def test_get_post_permission_denied(post_service):
     create_resp = post_service.CreatePost(
         post_pb2.CreatePostRequest(
