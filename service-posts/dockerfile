@@ -1,16 +1,13 @@
 # syntax=docker/dockerfile:1
 FROM python:3.10-alpine
 WORKDIR /code
-ENV FLASK_APP=app.py
-ENV FLASK_RUN_HOST=0.0.0.0
-RUN apk add --no-cache gcc musl-dev linux-headers
 
 RUN pip install grpcio-tools
 COPY proto proto
 RUN python3 -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. proto/post.proto
 
-COPY service-api/requirements.txt requirements.txt
+COPY service-posts/requirements.txt requirements.txt
 RUN pip install -r requirements.txt
-EXPOSE 5000
-COPY service-api/ .
-CMD ["flask", "run", "--debug"]
+EXPOSE 50051
+COPY service-posts/ .
+CMD ["python3", "-m", "app"]
