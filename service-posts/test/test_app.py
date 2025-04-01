@@ -216,10 +216,6 @@ def test_delete_post(post_service):
     assert get_response.error == "Post not found"
 
 def test_list_posts(post_service):
-    initial_request = post_pb2.ListPostsRequest(creator_id=1)
-    initial_response = post_service.ListPosts(initial_request, None)
-    initial_count = len(initial_response.posts)
-    
     for i in range(3):
         post_service.CreatePost(
             post_pb2.CreatePostRequest(
@@ -229,14 +225,14 @@ def test_list_posts(post_service):
                     is_private=False,
                     tags=[]
                 ),
-                creator_id=1
+                creator_id=7
             ),
             None
         )
     
-    request = post_pb2.ListPostsRequest(creator_id=1)
+    request = post_pb2.ListPostsRequest(creator_id=7)
     response = post_service.ListPosts(request, None)
     
-    assert len(response.posts) == initial_count + 3
-    assert all(p.creator_id == 1 for p in response.posts[-3:])
+    assert len(response.posts) == 3
+    assert all(p.creator_id == 7 for p in response.posts)
     

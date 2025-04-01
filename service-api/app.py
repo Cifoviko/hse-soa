@@ -16,6 +16,8 @@ posts_stub = post_pb2_grpc.PostServiceStub(channel)
 
 SERVICE_USERS_URL = os.getenv("SERVICE_USERS_URL")
 
+API_PREFIX = '/api/v1'
+
 def check_data(data, vars_list):
     return all(param in data for param in vars_list)
 
@@ -44,8 +46,22 @@ def get_user_id(jwt_token):
 
     return -1, Response(response.content, status=response.status_code, headers=dict(response.headers))
 
+def json_post(post):
+    return {
+        "id": post.id,
+        "title": post.data.title,
+        "description": post.data.description,
+        "is_private": post.data.is_private,
+        "tags": list(post.data.tags),
+        "creator_id": post.creator_id,
+        "created_at": post.created_at,
+        "updated_at": post.updated_at
+    }
 
-@app.route('/register', methods=['POST'])
+def jsonify_post(post):
+    return jsonify(json_post(post))
+
+@app.route(f'{API_PREFIX}/register', methods=['POST'])
 def register_method():
     """
     Register new user
@@ -80,7 +96,7 @@ def register_method():
     """
     return proxy_request(SERVICE_USERS_URL, "register")
 
-@app.route('/login', methods=['POST'])
+@app.route(f'{API_PREFIX}/login', methods=['POST'])
 def login_method():
     """
     Login
@@ -121,7 +137,7 @@ def login_method():
     """
     return proxy_request(SERVICE_USERS_URL, "login")
 
-@app.route('/me', methods=['POST'])
+@app.route(f'{API_PREFIX}/me', methods=['POST'])
 def me_method():
     """
     Get all user information
@@ -182,7 +198,7 @@ def me_method():
     """
     return proxy_request(SERVICE_USERS_URL, "me")
 
-@app.route('/update_info', methods=['POST'])
+@app.route(f'{API_PREFIX}/update_info', methods=['POST'])
 def update_info_method():
     """
     Get all user information
@@ -233,11 +249,10 @@ def update_info_method():
     """
     return proxy_request(SERVICE_USERS_URL, "update_info")
 
-
-@app.route('/test', methods=['POST'])
-def test_method():
+@app.route(f'{API_PREFIX}/posts', methods=['POST'])
+def create_post():
     """
-    Delete post
+    Create new post
     ---
     tags:
       - Posts
@@ -246,48 +261,438 @@ def test_method():
         in: body
         required: true
         schema:
-          id: PostDelete
-          required:
-            - jwt_token
+          type: object
           properties:
             jwt_token:
               type: string
-              description: Users jwt token
-    responses:
-      200:
-        description: Successfully deleted
-        schema:
-          id: Response
-          properties:
-            msg:
+              description: JWT access token
+            title:
               type: string
+              description: Post title
+            description:
+              type: string
+              description: Post description
+            is_private:
+              type: boolean
+              description: Is post private
+            tags:
+              type: array
+              items:
+                type: string
+              description: List of tags
+          required:
+            - jwt_token
+            - title
+    responses:
+      201:
+        description: Post created successfully
+        schema:
+          type: object
+          properties:
+            id:
+              type: integer
+              description: Created post ID
+            title:
+              type: string
+              description: Post title
+            description:
+              type: string
+              description: Post description
+            is_private:
+              type: boolean
+              description: Is post private
+            tags:
+              type: array
+              items:
+                type: string
+              description: List of tags
+            creator_id:
+              type: integer
+              description: Creator user ID
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
       400:
-        description: Invalid inputs
+        description: Missing required fields
+      401:
+        description: Invalid token
       500:
-        description: Internal error
+        description: Internal server error
     """
-    
-    token_field = 'jwt_token'
-    
     data = request.get_json()
-    if not check_data(data, [token_field]):
+    if not data or 'jwt_token' not in data:
         return jsonify({"msg": "Missing token"}), 400
     
-    token = data[token_field]
+    user_id, response = get_user_id(data['jwt_token'])
+    if not is_successful(response):
+        return response, response.status_code
+
+    if 'title' not in data:
+        return jsonify({"msg": "Title is required"}), 400
+
+    try:
+        post_data = post_pb2.PostData(
+            title=data.get('title', ''),
+            description=data.get('description', ''),
+            is_private=data.get('is_private', False),
+            tags=data.get('tags', [])
+        )
+        
+        response = posts_stub.CreatePost(post_pb2.CreatePostRequest(
+            post_data=post_data,
+            creator_id=user_id
+        ))
+        
+        if response.error:
+            return jsonify({"msg": response.error}), 400
+            
+        return jsonify_post(response.post), 201
+        
+    except grpc.RpcError as e:
+        return jsonify({"msg": "gRPC error", "error": e.details()}), 500
+
+@app.route(f'{API_PREFIX}/posts/<int:post_id>', methods=['GET'])
+def get_post(post_id):
+    """
+    Get post by ID
+    ---
+    tags:
+      - Posts
+    parameters:
+      - name: post_id
+        in: path
+        required: true
+        type: integer
+        description: Post ID
+      - name: token
+        in: query
+        required: true
+        type: string
+        description: JWT access token
+    responses:
+      200:
+        description: Post data
+        schema:
+          type: object
+          properties:
+            id:
+              type: integer
+              description: Post ID
+            title:
+              type: string
+              description: Post title
+            description:
+              type: string
+              description: Post description
+            is_private:
+              type: boolean
+              description: Is post private
+            tags:
+              type: array
+              items:
+                type: string
+              description: List of tags
+            creator_id:
+              type: integer
+              description: Creator user ID
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+      400:
+        description: Missing token
+      401:
+        description: Invalid token or permission denied
+      404:
+        description: Post not found
+      500:
+        description: Internal server error
+    """
+    token = request.args.get('token')
+    if not token:
+        return jsonify({"msg": "Missing token"}), 400
     
-    id, response = get_user_id(token)
+    user_id, response = get_user_id(token)
     if not is_successful(response):
         return response, response.status_code
 
     try:
-        delete_response = posts_stub.DeletePost(post_pb2.DeletePostRequest(post_id=0, creator_id=id))
+        response = posts_stub.GetPost(post_pb2.GetPostRequest(
+            post_id=post_id,
+            creator_id=user_id
+        ))
+        
+        if response.error:
+            if "not found" in response.error.lower():
+                return jsonify({"msg": response.error}), 404
+            return jsonify({"msg": response.error}), 401
+            
+        return jsonify_post(response.post), 200
+        
     except grpc.RpcError as e:
         return jsonify({"msg": "gRPC error", "error": e.details()}), 500
+
+@app.route(f'{API_PREFIX}/posts/<int:post_id>', methods=['PUT'])
+def update_post(post_id):
+    """
+    Update post
+    ---
+    tags:
+      - Posts
+    parameters:
+      - name: post_id
+        in: path
+        required: true
+        type: integer
+        description: Post ID
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            jwt_token:
+              type: string
+              description: JWT access token
+            title:
+              type: string
+              description: New post title
+            description:
+              type: string
+              description: New post description
+            is_private:
+              type: boolean
+              description: New post visibility
+            tags:
+              type: array
+              items:
+                type: string
+              description: New list of tags
+          required:
+            - jwt_token
+    responses:
+      200:
+        description: Post updated successfully
+        schema:
+          type: object
+          properties:
+            id:
+              type: integer
+              description: Post ID
+            title:
+              type: string
+              description: Post title
+            description:
+              type: string
+              description: Post description
+            is_private:
+              type: boolean
+              description: Is post private
+            tags:
+              type: array
+              items:
+                type: string
+              description: List of tags
+            creator_id:
+              type: integer
+              description: Creator user ID
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+      400:
+        description: Missing token
+      401:
+        description: Invalid token or permission denied
+      404:
+        description: Post not found
+      500:
+        description: Internal server error
+    """
+    data = request.get_json()
+    if not data or 'jwt_token' not in data:
+        return jsonify({"msg": "Missing token"}), 400
     
-    if delete_response.error != "":
-        return jsonify({"msg": delete_response.error}), 405
+    user_id, response = get_user_id(data['jwt_token'])
+    if not is_successful(response):
+        return response, response.status_code
+
+    try:
+        post_data = post_pb2.PostData(
+            title=data.get('title', ''),
+            description=data.get('description', ''),
+            is_private=data.get('is_private', False),
+            tags=data.get('tags', [])
+        )
+        
+        response = posts_stub.UpdatePost(post_pb2.UpdatePostRequest(
+            post_id=post_id,
+            post_data=post_data,
+            creator_id=user_id
+        ))
+        
+        if response.error:
+            if "not found" in response.error.lower():
+                return jsonify({"msg": response.error}), 404
+            return jsonify({"msg": response.error}), 401
+            
+        return jsonify_post(response.post), 200
+        
+    except grpc.RpcError as e:
+        return jsonify({"msg": "gRPC error", "error": e.details()}), 500
+
+@app.route(f'{API_PREFIX}/posts/<int:post_id>', methods=['DELETE'])
+def delete_post(post_id):
+    """
+    Delete post
+    ---
+    tags:
+      - Posts
+    parameters:
+      - name: post_id
+        in: path
+        required: true
+        type: integer
+        description: Post ID
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            jwt_token:
+              type: string
+              description: JWT access token
+          required:
+            - jwt_token
+    responses:
+      200:
+        description: Post deleted successfully
+        schema:
+          type: object
+          properties:
+            msg:
+              type: string
+              description: Success message
+      400:
+        description: Missing token
+      401:
+        description: Invalid token or permission denied
+      404:
+        description: Post not found
+      500:
+        description: Internal server error
+    """
+    data = request.get_json()
+    if not data or 'jwt_token' not in data:
+        return jsonify({"msg": "Missing token"}), 400
     
-    return jsonify({"msg": "Done"}), 200
+    user_id, response = get_user_id(data['jwt_token'])
+    if not is_successful(response):
+        return response, response.status_code
+
+    try:
+        response = posts_stub.DeletePost(post_pb2.DeletePostRequest(
+            post_id=post_id,
+            creator_id=user_id
+        ))
+        
+        if response.error:
+            if "not found" in response.error.lower():
+                return jsonify({"msg": response.error}), 404
+            return jsonify({"msg": response.error}), 401
+            
+        return jsonify({"msg": "Post deleted successfully"}), 200
+        
+    except grpc.RpcError as e:
+        return jsonify({"msg": "gRPC error", "error": e.details()}), 500
+
+@app.route(f'{API_PREFIX}/posts', methods=['GET'])
+def list_posts():
+    """
+    List user's posts
+    ---
+    tags:
+      - Posts
+    parameters:
+      - name: token
+        in: query
+        required: true
+        type: string
+        description: JWT access token
+    responses:
+      200:
+        description: List of user's posts
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                description: Post ID
+              title:
+                type: string
+                description: Post title
+              description:
+                type: string
+                description: Post description
+              is_private:
+                type: boolean
+                description: Is post private
+              tags:
+                type: array
+                items:
+                  type: string
+                description: List of tags
+              creator_id:
+                type: integer
+                description: Creator user ID
+              created_at:
+                type: string
+                format: date-time
+              updated_at:
+                type: string
+                format: date-time
+      400:
+        description: Missing token
+      401:
+        description: Invalid token
+      500:
+        description: Internal server error
+    """
+    token = request.args.get('token')
+    if not token:
+        return jsonify({"msg": "Missing token"}), 400
+    
+    user_id, response = get_user_id(token)
+    if not is_successful(response):
+        return response, response.status_code
+
+    try:
+        response = posts_stub.ListPosts(post_pb2.ListPostsRequest(
+            creator_id=user_id
+        ))
+        
+        if response.error:
+            return jsonify({"msg": response.error}), 400
+  
+        posts = []
+        for post in response.posts:
+            posts.append(json_post(post))
+            
+        return jsonify(posts), 200
+        
+    except grpc.RpcError as e:
+        return jsonify({"msg": "gRPC error", "error": e.details()}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)
