@@ -1,6 +1,7 @@
+from time import sleep
 import pytest
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import grpc
 from concurrent import futures
 
@@ -9,6 +10,14 @@ os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 from proto import post_pb2
 from proto import post_pb2_grpc
 from app import PostService, Base, engine
+import datetime as dt
+
+def parse_grpc_timestamp(timestamp_str):
+    if timestamp_str.endswith('Z'):
+        d = datetime.fromisoformat(timestamp_str[:-1] + '+00:00')
+    else:
+        d = datetime.fromisoformat(timestamp_str + '+00:00')
+    return d.replace(tzinfo=None)
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_db():
@@ -152,6 +161,11 @@ def test_update_post(post_service):
         ),
         None
     )
+    created_at = parse_grpc_timestamp(create_resp.post.created_at)
+    initial_updated_at = parse_grpc_timestamp(create_resp.post.updated_at)
+    
+    assert dt.datetime.utcnow().replace(tzinfo=None) - created_at < timedelta(seconds=1)
+    assert dt.datetime.utcnow().replace(tzinfo=None) - initial_updated_at < timedelta(seconds=1)
     
     invalid_request = post_pb2.UpdatePostRequest(
         post_id=create_resp.post.id,
@@ -176,6 +190,8 @@ def test_update_post(post_service):
     assert not response.post.data.is_private
     assert "old" in response.post.data.tags
     
+    sleep(3)
+    
     update_request = post_pb2.UpdatePostRequest(
         post_id=create_resp.post.id,
         creator_id=1,
@@ -188,6 +204,12 @@ def test_update_post(post_service):
     )
     
     response = post_service.UpdatePost(update_request, None)
+    
+    new_created_at = parse_grpc_timestamp(response.post.created_at)
+    updated_at = parse_grpc_timestamp(response.post.updated_at)
+    
+    assert new_created_at == created_at
+    assert dt.datetime.utcnow().replace(tzinfo=None) - updated_at < timedelta(seconds=1)
     
     assert response.post.data.title == "New Title"
     assert response.post.data.description == "New Description"
