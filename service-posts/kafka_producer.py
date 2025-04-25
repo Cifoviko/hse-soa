@@ -6,23 +6,19 @@ import os
 
 KAFKA_BROKER = os.getenv("KAFKA_BROKER", "kafka:9092")
 
-for _ in range(10):
-    try:
-        producer = KafkaProducer(
+_producer = None
+
+def get_producer():
+    global _producer
+    if _producer is None:
+        _producer = KafkaProducer(
             bootstrap_servers=KAFKA_BROKER,
             value_serializer=lambda v: json.dumps(v).encode("utf-8")
         )
-        break
-    except NoBrokersAvailable:
-        print("Kafka broker not available, retrying...")
-        time.sleep(10)
-else:
-    raise RuntimeError("Kafka is not available after several attempts")
+    return _producer
 
 def send_event(topic, event):
-    try:
-        producer.send(topic, event)
-        producer.flush()
-        print(f"[Kafka] Sent to {topic}: {event}")
-    except Exception as e:
-        print(f"[Kafka] Error sending to {topic}: {e}")
+    print(f"[Kafka] Sending to {topic}: {event}")
+    producer = get_producer()
+    producer.send(topic, event)
+    producer.flush()
