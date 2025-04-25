@@ -1,8 +1,11 @@
+import datetime
 from flask import Flask, jsonify, request, Response
 from flasgger import Swagger
 import requests
 import grpc
 import os
+
+from kafka_producer import send_event
 
 from proto import post_pb2
 from proto import post_pb2_grpc
@@ -693,6 +696,71 @@ def list_posts():
     except grpc.RpcError as e:
         return jsonify({"msg": "gRPC error", "error": e.details()}), 500
 
+
+@app.route(f'{API_PREFIX}/test', methods=['GET'])
+def test():
+    """
+    Test
+    ---
+    tags:
+      - Posts
+    parameters:
+      - name: token
+        in: query
+        required: true
+        type: string
+        description: JWT access token
+    responses:
+      200:
+        description: List of user's posts
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                description: Post ID
+              title:
+                type: string
+                description: Post title
+              description:
+                type: string
+                description: Post description
+              is_private:
+                type: boolean
+                description: Is post private
+              tags:
+                type: array
+                items:
+                  type: string
+                description: List of tags
+              creator_id:
+                type: integer
+                description: Creator user ID
+              created_at:
+                type: string
+                format: date-time
+              updated_at:
+                type: string
+                format: date-time
+      400:
+        description: Missing token
+      401:
+        description: Invalid token
+      500:
+        description: Internal server error
+    """
+    
+    send_event("post_views", {
+        "client_id": 0,
+        "entity_type": "post",
+        "entity_id": 0,
+        "action": "view",
+        "timestamp": datetime.datetime.utcnow().isoformat()
+    })
+    
+    return {"msg": "OK"}, 200
 
 if __name__ == '__main__':
     app.run(debug=True)

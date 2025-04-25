@@ -3,3 +3,4 @@ requests
 flasgger
 grpcio
 grpcio-tools
+kafka-python
