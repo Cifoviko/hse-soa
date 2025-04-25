@@ -11,6 +11,28 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+  db-posts:
+    image: postgres:15
+    container_name: postgres_db_posts
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: db_posts
+    ports:
+      - "5433:5432"
+    volumes:
+      - post_pgdata:/var/lib/postgresql/data
+  service-posts:
+    build:
+      context: .
+      dockerfile: service-posts/Dockerfile
+    depends_on:
+      - db-posts
+    environment:
+      DATABASE_URL: postgresql://user:password@db-posts/db_posts
+    ports:
+      - "50051:50051"
   service-users:
     build: ./service-users
     depends_on:
@@ -20,12 +42,19 @@ services:
     ports:
       - "8000:5000"
   service-api:
-    build: ./service-api
+    build:
+      context: .
+      dockerfile: service-api/Dockerfile
     depends_on:
-      - service-users
+      service-users:
+        condition: service_started
+      service-posts:
+        condition: service_started
     environment:
       SERVICE_USERS_URL: http://service-users:5000/
+      SERVICE_POST_URL: service-posts:50051
     ports:
       - "8080:5000"
 volumes:
   pgdata:
+  post_pgdata:
