@@ -3,6 +3,8 @@ from flasgger import Swagger
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager, create_access_token, decode_token, get_jwt_identity
 
+from kafka_producer import send_event
+
 import bcrypt
 import re
 from datetime import datetime
@@ -198,6 +200,14 @@ def register_method():
         return jsonify({"msg": "Password is invalid"}), 401
 
     if register(username, password):
+        user_data = get_user_data(username)
+        
+        send_event("register", {
+          "login": username,
+          "user_id": user_data.id,
+          "timestamp": datetime.utcnow().isoformat()
+        })
+      
         return jsonify({"msg": "User registered successfully!"}), 201
     else:
         return jsonify({"msg": "Username already exists"}), 402

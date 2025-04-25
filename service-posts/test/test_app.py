@@ -4,6 +4,7 @@ import os
 from datetime import datetime, timedelta
 import grpc
 from concurrent import futures
+from unittest.mock import patch
 
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 
@@ -18,6 +19,11 @@ def parse_grpc_timestamp(timestamp_str):
     else:
         d = datetime.fromisoformat(timestamp_str + '+00:00')
     return d.replace(tzinfo=None)
+
+@pytest.fixture(autouse=True)
+def mock_send_event():
+    with patch("app.send_event") as mock:
+        yield mock
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_db():
@@ -282,4 +288,111 @@ def test_list_posts(post_service):
     
     assert len(response.posts) == 3
     assert all(p.creator_id == 7 for p in response.posts)
-    
+
+def test_create_comment(post_service):
+    post_resp = post_service.CreatePost(
+        post_pb2.CreatePostRequest(
+            post_data=post_pb2.PostData(
+                title="Post for Comment",
+                description="Testing comments",
+                is_private=False,
+                tags=[]
+            ),
+            creator_id=10
+        ),
+        None
+    )
+
+    comment_resp = post_service.CreateComment(
+        post_pb2.CreateCommentRequest(
+            post_id=post_resp.post.id,
+            creator_id=20,
+            text="This is a test comment"
+        ),
+        None
+    )
+    created_at = parse_grpc_timestamp(comment_resp.comment.created_at)
+
+    assert comment_resp.comment.created_at
+    assert dt.datetime.utcnow().replace(tzinfo=None) - created_at < timedelta(seconds=1)
+    assert comment_resp.comment.id > 0
+    assert comment_resp.comment.post_id == post_resp.post.id
+    assert comment_resp.comment.creator_id == 20
+    assert comment_resp.comment.text == "This is a test comment"
+
+def test_list_comments(post_service):
+    post_resp = post_service.CreatePost(
+        post_pb2.CreatePostRequest(
+            post_data=post_pb2.PostData(
+                title="Post with Comments",
+                description="Pagination test",
+                is_private=False,
+                tags=[]
+            ),
+            creator_id=11
+        ),
+        None
+    )
+
+    post_id = post_resp.post.id
+
+    for i in range(5):
+        post_service.CreateComment(
+            post_pb2.CreateCommentRequest(
+                post_id=post_id,
+                creator_id=100 + i,
+                text=f"Comment {i}"
+            ),
+            None
+        )
+
+    resp_page_1 = post_service.ListComments(
+        post_pb2.ListCommentsRequest(
+            post_id=post_id,
+            creator_id=11,
+            page=1,
+            page_size=3
+        ),
+        None
+    )
+
+    assert len(resp_page_1.comments) == 3
+    assert all(c.post_id == post_id for c in resp_page_1.comments)
+
+    resp_page_2 = post_service.ListComments(
+        post_pb2.ListCommentsRequest(
+            post_id=post_id,
+            creator_id=11,
+            page=2,
+            page_size=3
+        ),
+        None
+    )
+
+    assert len(resp_page_2.comments) == 2
+
+def test_list_comments_private_post_no_access(post_service):
+    post_resp = post_service.CreatePost(
+        post_pb2.CreatePostRequest(
+            post_data=post_pb2.PostData(
+                title="Private Post",
+                description="Should be restricted",
+                is_private=True,
+                tags=[]
+            ),
+            creator_id=99
+        ),
+        None
+    )
+
+    resp = post_service.ListComments(
+        post_pb2.ListCommentsRequest(
+            post_id=post_resp.post.id,
+            creator_id=1,
+            page=1,
+            page_size=10
+        ),
+        None
+    )
+
+    assert resp.error == "Permission denied"

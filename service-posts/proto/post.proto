@@ -62,10 +62,44 @@ message ListPostsResponse {
     string error = 1000;
 }
 
+message Comment {
+    int32 id = 1;
+    int32 post_id = 2;
+    int32 creator_id = 3;
+    string text = 4;
+    string created_at = 5;
+}
+
+message CreateCommentRequest {
+    int32 creator_id = 1;
+    int32 post_id = 2;
+    string text = 3;
+}
+
+message CreateCommentResponse {
+    Comment comment = 1;
+    string error = 1000;
+}
+
+message ListCommentsRequest {
+    int32 creator_id = 1;
+    int32 post_id = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message ListCommentsResponse {
+    repeated Comment comments = 1;
+    string error = 1000;
+}
+
 service PostService {
     rpc CreatePost(CreatePostRequest) returns (PostResponse);
     rpc DeletePost(DeletePostRequest) returns (DeletePostResponse);
     rpc UpdatePost(UpdatePostRequest) returns (PostResponse);
     rpc GetPost(GetPostRequest) returns (PostResponse);
     rpc ListPosts(ListPostsRequest) returns (ListPostsResponse);
+    
+    rpc CreateComment(CreateCommentRequest) returns (CreateCommentResponse);
+    rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse);
 }
