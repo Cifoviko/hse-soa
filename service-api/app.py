@@ -753,7 +753,7 @@ def test():
     """
     
     send_event("post_views", {
-        "client_id": 0,
+        "client_id": 1,
         "entity_type": "post",
         "entity_id": 0,
         "action": "view",
