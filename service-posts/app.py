@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 from proto import post_pb2
 from proto import post_pb2_grpc
 
+from kafka_producer import send_event
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import os
@@ -28,6 +30,15 @@ class Post(Base):
     created_at = Column(DateTime, default=dt.datetime.utcnow)
     updated_at = Column(DateTime, default=dt.datetime.utcnow, 
                        onupdate=dt.datetime.utcnow)
+
+class Comment(Base):
+    __tablename__ = 'comments'
+
+    id = Column(Integer, primary_key=True)
+    post_id = Column(Integer, index=True)
+    creator_id = Column(Integer, index=True)
+    text = Column(String)
+    created_at = Column(DateTime, default=dt.datetime.utcnow)
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@db:5432/postgres")
 
@@ -120,6 +131,79 @@ class PostService(post_pb2_grpc.PostServiceServicer):
         
         return post_pb2.ListPostsResponse(
             posts=[self._post_to_proto(post) for post in posts]
+        )
+    
+    def CreateComment(self, request, context):
+        db: Session = next(get_db())
+        
+        post = db.query(Post).filter(Post.id == request.post_id).first()
+        
+        if not post:
+            return post_pb2.CreateCommentResponse(error="Post not found")
+        
+        if (post.creator_id != request.creator_id) and post.is_private:
+            return post_pb2.CreateCommentResponse(error="Permission denied")
+
+        comment = Comment(
+            post_id=request.post_id,
+            creator_id=request.creator_id,
+            text=request.text,
+            created_at=dt.datetime.utcnow()
+        )
+
+        db.add(comment)
+        db.commit()
+        db.refresh(comment)
+
+        send_event("comment-creation", {
+            "creator_id": comment.creator_id,
+            "post_id": comment.post_id,
+            "comment_id": comment.id,
+            "timestamp": comment.created_at.isoformat()
+        })
+
+        return post_pb2.CreateCommentResponse(
+            comment=post_pb2.Comment(
+                id=comment.id,
+                post_id=comment.post_id,
+                creator_id=comment.creator_id,
+                text=comment.text,
+                created_at=comment.created_at.isoformat()
+            )
+        )
+
+    def ListComments(self, request, context):
+        db: Session = next(get_db())
+        
+        post = db.query(Post).filter(Post.id == request.post_id).first()
+        
+        if not post:
+            return post_pb2.ListCommentsResponse(error="Post not found")
+        
+        if (post.creator_id != request.creator_id) and post.is_private:
+            return post_pb2.ListCommentsResponse(error="Permission denied")
+        
+        if request.page <= 0:
+            return post_pb2.ListCommentsResponse(error="Invalid page")
+        
+        if request.page_size <= 0:
+            return post_pb2.ListCommentsResponse(error="Invalid page size")
+        
+        offset = (request.page - 1) * request.page_size
+        comments = db.query(Comment).filter(Comment.post_id == request.post_id)\
+                        .order_by(Comment.created_at.desc())\
+                        .offset(offset).limit(request.page_size).all()
+
+        return post_pb2.ListCommentsResponse(
+            comments=[
+                post_pb2.Comment(
+                    id=c.id,
+                    post_id=c.post_id,
+                    creator_id=c.creator_id,
+                    text=c.text,
+                    created_at=c.created_at.isoformat()
+                ) for c in comments
+            ]
         )
     
     def _post_to_proto(self, post: Post):
