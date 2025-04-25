@@ -56,6 +56,9 @@ services:
     build: ./service-users
     depends_on:
       - db
+      - zookeeper
+      - kafka
+      - kafka-ui
     environment:
       DATABASE_URL: postgresql://user:password@db/db_name
     ports:
