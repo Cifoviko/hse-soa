@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-from proto import post_pb2 as proto_dot_post__pb2
+import post_pb2 as post__pb2
 
 GRPC_GENERATED_VERSION = '1.66.1'
 GRPC_VERSION = grpc.__version__
@@ -18,7 +18,7 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + f' but the generated code in proto/post_pb2_grpc.py depends on'
+        + f' but the generated code in post_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
@@ -36,28 +36,38 @@ class PostServiceStub(object):
         """
         self.CreatePost = channel.unary_unary(
                 '/post.PostService/CreatePost',
-                request_serializer=proto_dot_post__pb2.CreatePostRequest.SerializeToString,
-                response_deserializer=proto_dot_post__pb2.PostResponse.FromString,
+                request_serializer=post__pb2.CreatePostRequest.SerializeToString,
+                response_deserializer=post__pb2.PostResponse.FromString,
                 _registered_method=True)
         self.DeletePost = channel.unary_unary(
                 '/post.PostService/DeletePost',
-                request_serializer=proto_dot_post__pb2.DeletePostRequest.SerializeToString,
-                response_deserializer=proto_dot_post__pb2.DeletePostResponse.FromString,
+                request_serializer=post__pb2.DeletePostRequest.SerializeToString,
+                response_deserializer=post__pb2.DeletePostResponse.FromString,
                 _registered_method=True)
         self.UpdatePost = channel.unary_unary(
                 '/post.PostService/UpdatePost',
-                request_serializer=proto_dot_post__pb2.UpdatePostRequest.SerializeToString,
-                response_deserializer=proto_dot_post__pb2.PostResponse.FromString,
+                request_serializer=post__pb2.UpdatePostRequest.SerializeToString,
+                response_deserializer=post__pb2.PostResponse.FromString,
                 _registered_method=True)
         self.GetPost = channel.unary_unary(
                 '/post.PostService/GetPost',
-                request_serializer=proto_dot_post__pb2.GetPostRequest.SerializeToString,
-                response_deserializer=proto_dot_post__pb2.PostResponse.FromString,
+                request_serializer=post__pb2.GetPostRequest.SerializeToString,
+                response_deserializer=post__pb2.PostResponse.FromString,
                 _registered_method=True)
         self.ListPosts = channel.unary_unary(
                 '/post.PostService/ListPosts',
-                request_serializer=proto_dot_post__pb2.ListPostsRequest.SerializeToString,
-                response_deserializer=proto_dot_post__pb2.ListPostsResponse.FromString,
+                request_serializer=post__pb2.ListPostsRequest.SerializeToString,
+                response_deserializer=post__pb2.ListPostsResponse.FromString,
+                _registered_method=True)
+        self.CreateComment = channel.unary_unary(
+                '/post.PostService/CreateComment',
+                request_serializer=post__pb2.CreateCommentRequest.SerializeToString,
+                response_deserializer=post__pb2.CreateCommentResponse.FromString,
+                _registered_method=True)
+        self.ListComments = channel.unary_unary(
+                '/post.PostService/ListComments',
+                request_serializer=post__pb2.ListCommentsRequest.SerializeToString,
+                response_deserializer=post__pb2.ListCommentsResponse.FromString,
                 _registered_method=True)
 
 
@@ -94,33 +104,55 @@ class PostServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def CreateComment(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListComments(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_PostServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'CreatePost': grpc.unary_unary_rpc_method_handler(
                     servicer.CreatePost,
-                    request_deserializer=proto_dot_post__pb2.CreatePostRequest.FromString,
-                    response_serializer=proto_dot_post__pb2.PostResponse.SerializeToString,
+                    request_deserializer=post__pb2.CreatePostRequest.FromString,
+                    response_serializer=post__pb2.PostResponse.SerializeToString,
             ),
             'DeletePost': grpc.unary_unary_rpc_method_handler(
                     servicer.DeletePost,
-                    request_deserializer=proto_dot_post__pb2.DeletePostRequest.FromString,
-                    response_serializer=proto_dot_post__pb2.DeletePostResponse.SerializeToString,
+                    request_deserializer=post__pb2.DeletePostRequest.FromString,
+                    response_serializer=post__pb2.DeletePostResponse.SerializeToString,
             ),
             'UpdatePost': grpc.unary_unary_rpc_method_handler(
                     servicer.UpdatePost,
-                    request_deserializer=proto_dot_post__pb2.UpdatePostRequest.FromString,
-                    response_serializer=proto_dot_post__pb2.PostResponse.SerializeToString,
+                    request_deserializer=post__pb2.UpdatePostRequest.FromString,
+                    response_serializer=post__pb2.PostResponse.SerializeToString,
             ),
             'GetPost': grpc.unary_unary_rpc_method_handler(
                     servicer.GetPost,
-                    request_deserializer=proto_dot_post__pb2.GetPostRequest.FromString,
-                    response_serializer=proto_dot_post__pb2.PostResponse.SerializeToString,
+                    request_deserializer=post__pb2.GetPostRequest.FromString,
+                    response_serializer=post__pb2.PostResponse.SerializeToString,
             ),
             'ListPosts': grpc.unary_unary_rpc_method_handler(
                     servicer.ListPosts,
-                    request_deserializer=proto_dot_post__pb2.ListPostsRequest.FromString,
-                    response_serializer=proto_dot_post__pb2.ListPostsResponse.SerializeToString,
+                    request_deserializer=post__pb2.ListPostsRequest.FromString,
+                    response_serializer=post__pb2.ListPostsResponse.SerializeToString,
+            ),
+            'CreateComment': grpc.unary_unary_rpc_method_handler(
+                    servicer.CreateComment,
+                    request_deserializer=post__pb2.CreateCommentRequest.FromString,
+                    response_serializer=post__pb2.CreateCommentResponse.SerializeToString,
+            ),
+            'ListComments': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListComments,
+                    request_deserializer=post__pb2.ListCommentsRequest.FromString,
+                    response_serializer=post__pb2.ListCommentsResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -148,8 +180,8 @@ class PostService(object):
             request,
             target,
             '/post.PostService/CreatePost',
-            proto_dot_post__pb2.CreatePostRequest.SerializeToString,
-            proto_dot_post__pb2.PostResponse.FromString,
+            post__pb2.CreatePostRequest.SerializeToString,
+            post__pb2.PostResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -175,8 +207,8 @@ class PostService(object):
             request,
             target,
             '/post.PostService/DeletePost',
-            proto_dot_post__pb2.DeletePostRequest.SerializeToString,
-            proto_dot_post__pb2.DeletePostResponse.FromString,
+            post__pb2.DeletePostRequest.SerializeToString,
+            post__pb2.DeletePostResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -202,8 +234,8 @@ class PostService(object):
             request,
             target,
             '/post.PostService/UpdatePost',
-            proto_dot_post__pb2.UpdatePostRequest.SerializeToString,
-            proto_dot_post__pb2.PostResponse.FromString,
+            post__pb2.UpdatePostRequest.SerializeToString,
+            post__pb2.PostResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -229,8 +261,8 @@ class PostService(object):
             request,
             target,
             '/post.PostService/GetPost',
-            proto_dot_post__pb2.GetPostRequest.SerializeToString,
-            proto_dot_post__pb2.PostResponse.FromString,
+            post__pb2.GetPostRequest.SerializeToString,
+            post__pb2.PostResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -256,8 +288,62 @@ class PostService(object):
             request,
             target,
             '/post.PostService/ListPosts',
-            proto_dot_post__pb2.ListPostsRequest.SerializeToString,
-            proto_dot_post__pb2.ListPostsResponse.FromString,
+            post__pb2.ListPostsRequest.SerializeToString,
+            post__pb2.ListPostsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def CreateComment(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/post.PostService/CreateComment',
+            post__pb2.CreateCommentRequest.SerializeToString,
+            post__pb2.CreateCommentResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListComments(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/post.PostService/ListComments',
+            post__pb2.ListCommentsRequest.SerializeToString,
+            post__pb2.ListCommentsResponse.FromString,
             options,
             channel_credentials,
             insecure,

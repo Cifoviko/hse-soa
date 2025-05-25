@@ -1,8 +1,11 @@
+import datetime
 from flask import Flask, jsonify, request, Response
 from flasgger import Swagger
 import requests
 import grpc
 import os
+
+from kafka_producer import send_event
 
 from proto import post_pb2
 from proto import post_pb2_grpc
@@ -94,6 +97,7 @@ def register_method():
       402:
         description: User with same username already exists
     """
+    
     return proxy_request(SERVICE_USERS_URL, "register")
 
 @app.route(f'{API_PREFIX}/login', methods=['POST'])
@@ -432,6 +436,12 @@ def get_post(post_id):
                 return jsonify({"msg": response.error}), 404
             return jsonify({"msg": response.error}), 401
             
+        send_event("post-view", {
+          "user_id": user_id,
+          "post_id": post_id,
+          "timestamp": datetime.datetime.utcnow().isoformat()
+        })
+        
         return jsonify_post(response.post), 200
         
     except grpc.RpcError as e:
@@ -686,6 +696,12 @@ def list_posts():
   
         posts = []
         for post in response.posts:
+            send_event("post-view", {
+              "user_id": user_id,
+              "post_id": post.id,
+              "timestamp": datetime.datetime.utcnow().isoformat()
+            })
+        
             posts.append(json_post(post))
             
         return jsonify(posts), 200
@@ -693,6 +709,199 @@ def list_posts():
     except grpc.RpcError as e:
         return jsonify({"msg": "gRPC error", "error": e.details()}), 500
 
+@app.route(f'{API_PREFIX}/posts/<int:post_id>/like', methods=['POST'])
+def like_post(post_id):
+    """
+    Like a post
+    ---
+    tags:
+      - Posts
+    parameters:
+      - name: post_id
+        in: path
+        required: true
+        type: integer
+        description: Post ID
+      - name: token
+        in: query
+        required: true
+        type: string
+        description: JWT access token
+    responses:
+      200:
+        description: Like event sent
+      400:
+        description: Missing token
+      401:
+        description: Unauthorized
+    """
+    token = request.args.get('token')
+    if not token:
+        return jsonify({"msg": "Missing token"}), 400
+    
+    user_id, response = get_user_id(token)
+    if not is_successful(response):
+        return response, response.status_code
+
+    try:
+        response = posts_stub.GetPost(post_pb2.GetPostRequest(
+            post_id=post_id,
+            creator_id=user_id
+        ))
+        
+        if response.error:
+            if "not found" in response.error.lower():
+                return jsonify({"msg": response.error}), 404
+            return jsonify({"msg": response.error}), 401
+            
+        send_event("post-like", {
+          "user_id": user_id,
+          "post_id": post_id,
+          "timestamp": datetime.datetime.utcnow().isoformat()
+        })
+        
+        return jsonify({"msg": "liked post!"}), 200
+        
+    except grpc.RpcError as e:
+        return jsonify({"msg": "gRPC error", "error": e.details()}), 500
+
+@app.route(f'{API_PREFIX}/comments', methods=['POST'])
+def create_comment():
+    """
+    Create comment on a post
+    ---
+    tags:
+      - Comments
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            jwt_token:
+              type: string
+            post_id:
+              type: integer
+            text:
+              type: string
+          required:
+            - jwt_token
+            - post_id
+            - text
+    responses:
+      201:
+        description: Comment created
+      400:
+        description: Missing data
+      401:
+        description: Unauthorized
+      404:
+        description: Post not found
+    """
+    data = request.get_json()
+    required_fields = ['jwt_token', 'post_id', 'text']
+    if not check_data(data, required_fields):
+        return jsonify({"msg": "Missing required fields"}), 400
+
+    user_id, response = get_user_id(data['jwt_token'])
+    if not is_successful(response):
+        return response, response.status_code
+
+    try:
+        grpc_response = posts_stub.CreateComment(post_pb2.CreateCommentRequest(
+            creator_id=user_id,
+            post_id=data['post_id'],
+            text=data['text']
+        ))
+
+        if grpc_response.error:
+            if "not found" in grpc_response.error.lower():
+                return jsonify({"msg": grpc_response.error}), 404
+            return jsonify({"msg": grpc_response.error}), 400
+
+        comment = grpc_response.comment
+        return jsonify({
+            "id": comment.id,
+            "post_id": comment.post_id,
+            "creator_id": comment.creator_id,
+            "text": comment.text,
+            "created_at": comment.created_at
+        }), 201
+
+    except grpc.RpcError as e:
+        return jsonify({"msg": "gRPC error", "error": e.details()}), 500
+
+@app.route(f'{API_PREFIX}/comments', methods=['GET'])
+def list_comments():
+    """
+    List comments on a post
+    ---
+    tags:
+      - Comments
+    parameters:
+      - name: jwt_token
+        in: query
+        required: true
+        type: string
+      - name: post_id
+        in: query
+        required: true
+        type: integer
+      - name: page
+        in: query
+        required: false
+        type: integer
+        default: 1
+      - name: page_size
+        in: query
+        required: false
+        type: integer
+        default: 10
+    responses:
+      200:
+        description: List of comments
+      400:
+        description: Invalid request
+    """
+    try:
+        jwt_token = request.args.get("jwt_token")
+        post_id = int(request.args.get("post_id"))
+        page = int(request.args.get("page", 1))
+        page_size = int(request.args.get("page_size", 10))
+    except (TypeError, ValueError):
+        return jsonify({"msg": "Invalid query parameters"}), 400
+
+    user_id, response = get_user_id(jwt_token)
+    if not is_successful(response):
+        return response, response.status_code
+
+    try:
+        grpc_response = posts_stub.ListComments(post_pb2.ListCommentsRequest(
+            creator_id=user_id,
+            post_id=post_id,
+            page=page,
+            page_size=page_size
+        ))
+
+        if grpc_response.error:
+            if "not found" in grpc_response.error.lower():
+                return jsonify({"msg": grpc_response.error}), 404
+            return jsonify({"msg": grpc_response.error}), 400
+          
+        comments = [
+            {
+                "id": c.id,
+                "post_id": c.post_id,
+                "creator_id": c.creator_id,
+                "text": c.text,
+                "created_at": c.created_at
+            } for c in grpc_response.comments
+        ]
+        return jsonify(comments), 200
+
+    except grpc.RpcError as e:
+        return jsonify({"msg": "gRPC error", "error": e.details()}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
